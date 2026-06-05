@@ -1,0 +1,21 @@
+# secrets block (security.md §6 — present before first commit)
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+*.p12
+id_rsa*
+*.secret
+secrets.json
+credentials.json
+
+# local
+node_modules/
+.DS_Store
+Thumbs.db
+
+# Claude Code working files stay local
+CLAUDE.md
+.claude/
+docs/superpowers/

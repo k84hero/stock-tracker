@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- NOTE: frame-ancestors / HSTS / nosniff / Referrer-Policy / Permissions-Policy cannot ship
+       from a <meta> CSP and GitHub Pages serves no custom headers. They are deferred to the
+       Cloudflare-proxy milestone (security.md §2/§4) — tracked in DEPLOY.md. -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; connect-src 'self' https://finnhub.io https://api.twelvedata.com https://api.coingecko.com https://api.anthropic.com; img-src 'self' data:; style-src 'self'; script-src 'self'; font-src 'self'; base-uri 'self'; form-action 'none'; object-src 'none'">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%230f1419'/%3E%3Cpath d='M3 11l3-4 2 2 3-5 2 3' stroke='%233fb6a8' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <title>Stock Tracker — watchlist · charts · portfolio · analyst</title>
+  <meta name="description" content="A free-tier stock and crypto dashboard: live quotes, daily charts, a private portfolio, a relational correlation map, and a Claude analyst. No accounts.">
+  <link rel="canonical" href="https://k84hero.github.io/stock-tracker/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Stock Tracker">
+  <meta property="og:title" content="Stock Tracker — watchlist · charts · portfolio · analyst">
+  <meta property="og:description" content="A free-tier stock and crypto dashboard: live quotes, daily charts, a private portfolio, a relational correlation map, and an AI analyst.">
+  <meta property="og:url" content="https://k84hero.github.io/stock-tracker/">
+  <meta property="og:image" content="https://k84hero.github.io/stock-tracker/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Stock Tracker — watchlist · charts · portfolio · analyst">
+  <meta name="twitter:description" content="A free-tier stock and crypto dashboard: live quotes, daily charts, a private portfolio, a relational correlation map, and an AI analyst.">
+  <meta name="twitter:image" content="https://k84hero.github.io/stock-tracker/og-image.png">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="modulepreload" href="lib.js">
+  <link rel="modulepreload" href="config.js">
+  <link rel="modulepreload" href="analyst.js">
+</head>
+<body>
+  <a class="visually-hidden" href="#main">Skip to content</a>
+  <header>
+    <div class="masthead">
+      <h1>Stock Tracker</h1>
+      <button id="settings-open" class="ghost" aria-haspopup="dialog">Settings</button>
+    </div>
+    <p class="ref">Watchlist quotes · daily charts · private portfolio · relational map · AI analyst. All state stays in this browser.</p>
+    <p class="status" id="status" role="status" aria-live="polite">Loading…</p>
+  </header>
+
+  <div id="demo-banner" class="banner" hidden>
+    Demo mode — synthetic stock data (crypto is live). Add free API keys in <button id="banner-settings" class="linklike" aria-haspopup="dialog">Settings</button> for live quotes.
+  </div>
+
+  <section class="strip" id="strip" aria-label="Market overview"></section>
+
+  <main id="main">
+    <section aria-labelledby="watchlist-h">
+      <div class="section-head">
+        <h2 id="watchlist-h">Watchlist</h2>
+        <form id="add-form" class="add-form" autocomplete="off">
+          <label class="visually-hidden" for="add-symbol">Add a ticker symbol</label>
+          <input id="add-symbol" name="symbol" type="text" placeholder="Add symbol… e.g. TSLA or BTC"
+                 maxlength="12" spellcheck="false" autocapitalize="characters"
+                 role="combobox" aria-expanded="false" aria-controls="search-results" aria-autocomplete="list">
+          <button type="submit">Add</button>
+          <ul id="search-results" class="search-results" role="listbox" aria-label="Symbol matches" hidden></ul>
+        </form>
+      </div>
+      <div class="grid" id="grid"></div>
+    </section>
+
+    <section aria-labelledby="relations-h">
+      <div class="section-head">
+        <h2 id="relations-h">Relational map</h2>
+        <button id="relations-refresh" class="ghost">Refresh</button>
+      </div>
+      <p class="ref">The information is in the edges: pairwise return correlations across the watchlist, and how that architecture is reorganizing month over month.</p>
+      <div id="relations-body" class="relations"></div>
+    </section>
+
+    <section aria-labelledby="portfolio-h">
+      <div class="section-head">
+        <h2 id="portfolio-h">Portfolio</h2>
+        <button id="portfolio-analyze" hidden>Analyze portfolio (AI)</button>
+      </div>
+      <form id="position-form" class="position-form" autocomplete="off">
+        <div>
+          <label for="pos-symbol">Symbol</label>
+          <input id="pos-symbol" name="symbol" type="text" maxlength="12" required spellcheck="false" autocapitalize="characters" placeholder="AAPL">
+        </div>
+        <div>
+          <label for="pos-shares">Shares</label>
+          <input id="pos-shares" name="shares" type="number" min="0.0001" step="any" required placeholder="10">
+        </div>
+        <div>
+          <label for="pos-basis">Cost / share</label>
+          <input id="pos-basis" name="costBasis" type="number" min="0" step="any" required placeholder="182.50">
+        </div>
+        <button type="submit">Add position</button>
+      </form>
+      <div id="portfolio-analysis"></div>
+      <div class="table-wrap">
+        <table id="portfolio-table">
+          <caption class="visually-hidden">Portfolio positions with market value and profit and loss</caption>
+          <thead>
+            <tr>
+              <th scope="col">Symbol</th><th scope="col" class="num">Shares</th>
+              <th scope="col" class="num">Cost/sh</th><th scope="col" class="num">Price</th>
+              <th scope="col" class="num">Value</th><th scope="col" class="num">Day Δ</th>
+              <th scope="col" class="num">P/L $</th><th scope="col" class="num">P/L %</th>
+              <th scope="col"><span class="visually-hidden">Remove</span></th>
+            </tr>
+          </thead>
+          <tbody id="portfolio-body"></tbody>
+          <tfoot id="portfolio-foot"></tfoot>
+        </table>
+      </div>
+      <p class="ref" id="portfolio-empty">No positions yet. Add one above — it never leaves this browser.</p>
+    </section>
+
+    <section aria-labelledby="news-h">
+      <div class="section-head"><h2 id="news-h">Market news</h2></div>
+      <ul class="news" id="news"></ul>
+    </section>
+  </main>
+
+  <!-- Dialog titles are h3 intentionally: dialogs sit outside document flow and are
+       labelled via aria-labelledby; the level is not part of the page outline. -->
+  <dialog id="detail" aria-labelledby="detail-title">
+    <div class="dialog-head">
+      <h3 id="detail-title">Detail</h3>
+      <button class="ghost" id="detail-close" aria-label="Close details">×</button>
+    </div>
+    <div id="detail-body"></div>
+  </dialog>
+
+  <dialog id="settings" aria-labelledby="settings-title">
+    <div class="dialog-head">
+      <h3 id="settings-title">Settings</h3>
+      <button class="ghost" id="settings-close" aria-label="Close settings">×</button>
+    </div>
+    <form id="settings-form">
+      <p class="ref">Market-data keys are free; all keys are stored only in this browser.</p>
+      <label for="key-finnhub">Finnhub API key <a href="https://finnhub.io/register" target="_blank" rel="noopener noreferrer">get one</a></label>
+      <input id="key-finnhub" name="finnhub" type="password" autocomplete="off" spellcheck="false" placeholder="quotes · search · news">
+      <label for="key-twelvedata">Twelve Data API key <a href="https://twelvedata.com/pricing" target="_blank" rel="noopener noreferrer">get one</a></label>
+      <input id="key-twelvedata" name="twelvedata" type="password" autocomplete="off" spellcheck="false" placeholder="stock charts">
+      <label for="key-anthropic">Anthropic API key <a href="https://platform.claude.com/" target="_blank" rel="noopener noreferrer">console</a> — powers the analyst; usage is billed to your key</label>
+      <input id="key-anthropic" name="anthropic" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…  (never leaves this browser except to api.anthropic.com)">
+      <label for="model-select">Analyst model</label>
+      <select id="model-select" name="model"></select>
+      <label class="check" for="key-show"><input id="key-show" type="checkbox"> Show keys</label>
+      <div class="dialog-actions">
+        <button type="submit">Save</button>
+        <button type="button" id="clear-data" class="danger">Clear all local data</button>
+      </div>
+    </form>
+  </dialog>
+
+  <footer>
+    <p class="ref">Data: <a href="https://finnhub.io" target="_blank" rel="noopener noreferrer">Finnhub</a> ·
+      <a href="https://twelvedata.com" target="_blank" rel="noopener noreferrer">Twelve Data</a> ·
+      <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer">CoinGecko</a> (free tiers, delays possible).
+      Analyst: Claude (your key, your billing). Educational only — not investment advice.
+      <a href="https://github.com/k84hero/stock-tracker" target="_blank" rel="noopener noreferrer">Source</a>.</p>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

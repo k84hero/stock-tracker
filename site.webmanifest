@@ -1,0 +1,12 @@
+{
+  "name": "Stock Tracker",
+  "short_name": "Stocks",
+  "icons": [
+    { "src": "favicon-32.png", "sizes": "32x32", "type": "image/png" },
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ],
+  "theme_color": "#0f1419",
+  "background_color": "#0f1419",
+  "display": "browser",
+  "start_url": "."
+}
