@@ -2,7 +2,7 @@
 // is the per-key rate limit, per security.md §1). Settings-panel keys in
 // localStorage override these. Empty string = no default → demo mode.
 export const DEFAULT_KEYS = {
-  finnhub: '',
+  finnhub: 'd8hf209r01qgcfbpfjkgd8hf209r01qgcfbpfjl0',
   twelvedata: '',
 };
 
