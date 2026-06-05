@@ -43,7 +43,7 @@ export const ANALYST_MAX_TURNS = 8;          // tool-loop safety cap
 // Anthropic key lives server-side in the worker and the Settings field becomes a
 // PASSPHRASE (the worker's gate). Empty string = BYOK mode (the field is a real
 // sk-ant- key, sent direct to api.anthropic.com from the browser).
-export const ANALYST_PROXY_URL = '';
+export const ANALYST_PROXY_URL = 'https://stocktraderhero.anthonyharbertjr.workers.dev';
 
 // $ per 1M tokens {input, output} — for the per-run cost estimate in the UI.
 export const MODEL_PRICES = {

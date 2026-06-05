@@ -45,7 +45,7 @@ export const ANALYST_MAX_TURNS = 8;          // tool-loop safety cap
 
 // The Worker URL is NOT secret (the passphrase is what gates it), so it lives here
 // as a literal. Set it to your deployed worker URL to switch the analyst to proxy mode.
-export const ANALYST_PROXY_URL = '';
+export const ANALYST_PROXY_URL = 'https://stocktraderhero.anthonyharbertjr.workers.dev';
 
 // $ per 1M tokens {input, output} — for the per-run cost estimate in the UI.
 export const MODEL_PRICES = {
