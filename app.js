@@ -76,8 +76,18 @@ const store = {
 let posSeq = Date.now();
 const withIds = (positions) => positions.map((p) => (p.id ? p : { ...p, id: `p${posSeq++}` }));
 
+// Saved keys override baked defaults ONLY when non-empty — clearing a field in
+// Settings reverts to the site default instead of silently killing live data.
+function mergeKeys(saved) {
+  const merged = { ...DEFAULT_KEYS, anthropic: '' };
+  for (const [k, v] of Object.entries(saved ?? {})) {
+    if (typeof v === 'string' && v.trim()) merged[k] = v.trim();
+  }
+  return merged;
+}
+
 const state = {
-  keys: { ...DEFAULT_KEYS, anthropic: '', ...store.get('keys', {}) },
+  keys: mergeKeys(store.get('keys', {})),
   model: store.get('model', ANALYST_DEFAULT_MODEL),
   watchlist: store.get('watchlist', DEFAULT_WATCHLIST.slice()),
   positions: withIds(store.get('positions', [])),
@@ -91,6 +101,7 @@ const state = {
   refreshTimer: null,
   bootGen: 0,           // increments per boot(); stale sweeps check it before rendering
   analystBusy: false,
+  keyRejected: false,   // a Finnhub call came back 401 — bad key in Settings
 };
 
 const quotesLive = () => Boolean(state.keys.finnhub);
@@ -423,6 +434,10 @@ function renderNews(items) {
 function setStatus(text) { $('#status').textContent = text; }
 
 function refreshStatusLine() {
+  if (state.keyRejected) {
+    setStatus('Finnhub rejected the saved API key — open Settings and fix it, or clear the field to use the site default.');
+    return;
+  }
   const mode = quotesLive() ? 'Live quotes' : 'Demo data (crypto live)';
   const charts = chartsLive() ? 'live charts' : 'demo charts';
   setStatus(`${mode} · ${charts} · updated ${new Date().toLocaleTimeString()}`);
@@ -773,8 +788,10 @@ async function refreshQuotes(gen = state.bootGen) {
       if (gen !== state.bootGen) return; // a newer boot owns the state now
       state.quotes.set(symbol, q);
       state.stale.delete(symbol);
-    } catch {
-      if (gen === state.bootGen) state.stale.add(symbol);
+    } catch (err) {
+      if (gen !== state.bootGen) return;
+      state.stale.add(symbol);
+      if (!isCrypto(symbol) && String(err?.message ?? '').includes('401')) state.keyRejected = true;
     }
   }));
   if (gen !== state.bootGen) return;
@@ -975,11 +992,12 @@ function bindEvents() {
   });
   $('#settings-form').addEventListener('submit', (e) => {
     e.preventDefault();
-    state.keys = {
+    const entered = {
       finnhub: $('#key-finnhub').value.trim(),
       twelvedata: $('#key-twelvedata').value.trim(),
       anthropic: $('#key-anthropic').value.trim(),
     };
+    state.keys = mergeKeys(entered); // empty fields fall back to site defaults
     state.model = $('#model-select').value;
     store.set('keys', state.keys);
     store.set('model', state.model);
@@ -1004,6 +1022,7 @@ async function boot() {
   state.quotes.clear();
   state.series.clear();
   state.stale.clear();
+  state.keyRejected = false;
   renderStrip();
   renderWatchlist();
   renderPortfolio();
