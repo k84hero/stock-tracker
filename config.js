@@ -3,7 +3,7 @@
 // localStorage override these. Empty string = no default → demo mode.
 export const DEFAULT_KEYS = {
   finnhub: 'd8hf209r01qgcfbpfjkgd8hf209r01qgcfbpfjl0',
-  twelvedata: '',
+  twelvedata: '611bda3de7cf48f6883f33679d8327d3',
 };
 
 export const DEFAULT_WATCHLIST = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'BTC'];

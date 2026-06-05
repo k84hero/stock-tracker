@@ -60,7 +60,7 @@ const store = {
     } catch { return fallback; }
   },
   set(key, value) {
-    try { localStorage.setItem(`st.${key}`, JSON.stringify(value)); } catch { /* quota/private mode */ }
+    try { localStorage.setItem(`st.${key}`, JSON.stringify(value)); return true; } catch { return false; }
   },
   clearAll() {
     try {
@@ -101,7 +101,8 @@ const state = {
   refreshTimer: null,
   bootGen: 0,           // increments per boot(); stale sweeps check it before rendering
   analystBusy: false,
-  keyRejected: false,   // a Finnhub call came back 401 — bad key in Settings
+  keyRejected: false,    // a Finnhub call came back 401 — bad key in Settings
+  storageBlocked: false, // browser refused localStorage — settings live in memory only
 };
 
 const quotesLive = () => Boolean(state.keys.finnhub);
@@ -440,7 +441,10 @@ function refreshStatusLine() {
   }
   const mode = quotesLive() ? 'Live quotes' : 'Demo data (crypto live)';
   const charts = chartsLive() ? 'live charts' : 'demo charts';
-  setStatus(`${mode} · ${charts} · updated ${new Date().toLocaleTimeString()}`);
+  const storageNote = state.storageBlocked
+    ? ' · WARNING: browser blocked saving settings (private mode / privacy shields?) — keys work this session only'
+    : '';
+  setStatus(`${mode} · ${charts} · updated ${new Date().toLocaleTimeString()}${storageNote}`);
 }
 
 // ---------- relational panel (WJ as design language) ----------
@@ -999,8 +1003,8 @@ function bindEvents() {
     };
     state.keys = mergeKeys(entered); // empty fields fall back to site defaults
     state.model = $('#model-select').value;
-    store.set('keys', state.keys);
-    store.set('model', state.model);
+    const persisted = store.set('keys', state.keys) && store.set('model', state.model);
+    state.storageBlocked = !persisted; // keys still work in-memory this session
     settings.close();
     boot(); // re-init with new keys
   });
