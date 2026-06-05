@@ -1,0 +1,8 @@
+name = "stock-analyst"
+main = "worker.js"
+compatibility_date = "2026-06-05"
+
+# This worker takes TWO secrets. Never put their values in this file — set them with:
+#   npx wrangler secret put ANTHROPIC_API_KEY     (paste your real sk-ant-... key)
+#   npx wrangler secret put ANALYST_PASSPHRASE    (a strong passphrase you'll type in the site)
+# Or set both in the Cloudflare dashboard: Workers & Pages > your worker > Settings > Variables and Secrets.

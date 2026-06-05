@@ -1,0 +1,54 @@
+# Deploys Stock Tracker to GitHub Pages, generating config.js from Actions Secrets
+# so the market keys never live in the repo.
+#
+# DORMANT until cutover: the trigger is workflow_dispatch only, so committing this
+# file does NOT disturb the current "deploy from branch" Pages setup. To activate:
+#   1. Add repo secrets FINNHUB_KEY + TWELVEDATA_KEY (Settings > Secrets > Actions).
+#   2. Switch Pages source to "GitHub Actions" (Settings > Pages).
+#   3. Uncomment the `push` trigger below, delete config.js from the branch, and
+#      let config.template.js + this workflow own config.js generation.
+name: Deploy to Pages
+
+on:
+  workflow_dispatch: {}
+  # push:
+  #   branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate config.js from secrets
+        env:
+          FINNHUB_KEY: ${{ secrets.FINNHUB_KEY }}
+          TWELVEDATA_KEY: ${{ secrets.TWELVEDATA_KEY }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const sub = (s) => s
+              .split("__FINNHUB_KEY__").join(process.env.FINNHUB_KEY || "")
+              .split("__TWELVEDATA_KEY__").join(process.env.TWELVEDATA_KEY || "");
+            fs.writeFileSync("config.js", sub(fs.readFileSync("config.template.js", "utf8")));
+            if (!process.env.FINNHUB_KEY || !process.env.TWELVEDATA_KEY) {
+              console.log("WARNING: a market-data secret is empty — that provider will run in demo mode.");
+            }
+          '
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: "."
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,9 +1,12 @@
-// config.js — baked default API keys (publishable client-side keys; the control
-// is the per-key rate limit, per security.md §1). Settings-panel keys in
-// localStorage override these. Empty string = no default → demo mode.
+// config.template.js — SOURCE OF TRUTH for config after the GitHub Actions cutover.
+// The deploy workflow substitutes the __PLACEHOLDER__ values from GitHub Actions
+// Secrets and writes config.js at publish time, so the real keys never live in the
+// repo. Edit THIS file (not config.js) for any config change once the cutover is done.
+// The two market keys are publishable client-side keys (security.md §1); they are
+// kept out of the repo for clean git history + 'rotate without a public commit'.
 export const DEFAULT_KEYS = {
-  finnhub: 'd8hf209r01qgcfbpfjkgd8hf209r01qgcfbpfjl0',
-  twelvedata: '611bda3de7cf48f6883f33679d8327d3',
+  finnhub: '__FINNHUB_KEY__',
+  twelvedata: '__TWELVEDATA_KEY__',
 };
 
 export const DEFAULT_WATCHLIST = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'BTC'];
@@ -28,8 +31,9 @@ export const CRYPTO_IDS = {
   DOGE: 'dogecoin',
 };
 
-// Analyst agent (BYOK — the Anthropic key lives ONLY in localStorage via the
-// Settings panel; it is a real secret and must never be baked in here).
+// Analyst agent. In PROXY mode the Anthropic key lives server-side in a Cloudflare
+// Worker; the Settings field is a passphrase. In BYOK mode (proxy URL empty) the
+// field is a real sk-ant- key sent direct to api.anthropic.com.
 export const ANALYST_MODELS = [
   { id: 'claude-opus-4-8', label: 'Opus 4.8 (most capable)' },
   { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6 (balanced)' },
@@ -39,10 +43,8 @@ export const ANALYST_DEFAULT_MODEL = 'claude-opus-4-8';
 export const ANALYST_MAX_TOKENS = 16000;
 export const ANALYST_MAX_TURNS = 8;          // tool-loop safety cap
 
-// When set to a Cloudflare Worker URL, the analyst runs in PROXY mode: the
-// Anthropic key lives server-side in the worker and the Settings field becomes a
-// PASSPHRASE (the worker's gate). Empty string = BYOK mode (the field is a real
-// sk-ant- key, sent direct to api.anthropic.com from the browser).
+// The Worker URL is NOT secret (the passphrase is what gates it), so it lives here
+// as a literal. Set it to your deployed worker URL to switch the analyst to proxy mode.
 export const ANALYST_PROXY_URL = '';
 
 // $ per 1M tokens {input, output} — for the per-run cost estimate in the UI.

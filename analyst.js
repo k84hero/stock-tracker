@@ -9,11 +9,12 @@
 // number. The get_relations tool exposes the watchlist's correlation
 // architecture and its reorganization (weighted Jaccard vs the prior window).
 
-import { ANALYST_MAX_TOKENS, ANALYST_MAX_TURNS } from './config.js';
+import { ANALYST_MAX_TOKENS, ANALYST_MAX_TURNS, ANALYST_PROXY_URL } from './config.js';
 import { parseVerdict } from './lib.js';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const API_VERSION = '2023-06-01';
+const usingProxy = Boolean(ANALYST_PROXY_URL);
 
 const SYSTEM = `You are the resident analyst inside Stock Tracker, a personal investing dashboard. You produce a clear, evidence-grounded opinion on a stock, coin, or portfolio.
 
@@ -92,35 +93,42 @@ async function execTool(ctx, name, input) {
 const supportsAdaptiveThinking = (model) =>
   model.startsWith('claude-opus') || model.startsWith('claude-sonnet');
 
-async function callAPI(apiKey, model, messages) {
-  const res = await fetch(API_URL, {
+// `secret` is the user-entered value: a Worker passphrase in proxy mode, or a
+// raw sk-ant- key in BYOK mode. In proxy mode the worker holds the real key, so
+// we send only the passphrase; in BYOK mode we send the key direct to Anthropic.
+async function callAPI(secret, model, messages) {
+  const payload = JSON.stringify({
+    model,
+    max_tokens: ANALYST_MAX_TOKENS,
+    ...(supportsAdaptiveThinking(model) ? { thinking: { type: 'adaptive' } } : {}),
+    system: SYSTEM,
+    tools: TOOLS,
+    messages,
+  });
+  const res = await fetch(usingProxy ? ANALYST_PROXY_URL : API_URL, {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': API_VERSION,
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: ANALYST_MAX_TOKENS,
-      ...(supportsAdaptiveThinking(model) ? { thinking: { type: 'adaptive' } } : {}),
-      system: SYSTEM,
-      tools: TOOLS,
-      messages,
-    }),
+    headers: usingProxy
+      ? { 'content-type': 'application/json', 'x-analyst-auth': secret }
+      : {
+          'content-type': 'application/json',
+          'x-api-key': secret,
+          'anthropic-version': API_VERSION,
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+    body: payload,
   });
   if (!res.ok) {
     let detail = '';
     try { detail = String((await res.json())?.error?.message ?? '').slice(0, 200); } catch { /* opaque */ }
     const friendly = {
-      401: 'Anthropic API key rejected — check it in Settings.',
-      403: 'This key lacks permission for the selected model.',
+      401: usingProxy ? 'Analyst passphrase rejected — check it in Settings.' : 'Anthropic API key rejected — check it in Settings.',
+      403: 'The key lacks permission for the selected model.',
       404: 'Model not found — pick another model in Settings.',
-      429: 'Anthropic rate limit hit — wait a minute and retry.',
+      413: 'Request too large — try a single symbol instead of the full portfolio.',
+      429: 'Rate limit hit — wait a minute and retry.',
       529: 'Anthropic API is overloaded — retry shortly.',
     }[res.status];
-    throw new Error(friendly ?? `Anthropic API error ${res.status}${detail ? `: ${detail}` : ''}`);
+    throw new Error(friendly ?? `Analyst error ${res.status}${detail ? `: ${detail}` : ''}`);
   }
   return res.json();
 }

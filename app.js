@@ -15,6 +15,7 @@ import {
   DEFAULT_KEYS, DEFAULT_WATCHLIST, MARKET_STRIP,
   QUOTE_REFRESH_MS, NEWS_TTL_MS, FINNHUB_PER_MIN, TWELVEDATA_PER_MIN,
   COINGECKO_PER_MIN, CRYPTO_IDS, ANALYST_MODELS, ANALYST_DEFAULT_MODEL, MODEL_PRICES,
+  ANALYST_PROXY_URL,
 } from './config.js';
 import { runAnalyst } from './analyst.js';
 
@@ -1051,7 +1052,17 @@ function populateModelSelect() {
   $('#model-select').value = state.model;
 }
 
+// In proxy mode the analyst field is a passphrase, not an API key — relabel it.
+function initAnalystUI() {
+  if (!ANALYST_PROXY_URL) return; // BYOK labels as authored in index.html
+  const label = $('#analyst-label');
+  if (label) label.textContent = 'Analyst passphrase — checked by your Cloudflare Worker (the key stays server-side)';
+  const input = $('#key-anthropic');
+  if (input) input.placeholder = 'your analyst passphrase';
+}
+
 populateModelSelect();
+initAnalystUI();
 bindSearch();
 bindEvents();
 boot();
