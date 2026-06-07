@@ -88,8 +88,24 @@ export function decouplingPartners(mPrev, mNow, id, ids) {
   }
   return scored.filter((s) => s.score > 0.15).sort((p, q) => q.score - p.score).map((s) => s.j);
 }
-// --- remaining placeholders (replaced in Task 5: regimeState/recentVol; Task 6: rollingRegime).
-//     Kept exported so regime.test.js loads before those tasks land. ---
-export function regimeState() { throw new Error('not implemented (Task 5)'); }
-export function recentVol() { throw new Error('not implemented (Task 5)'); }
+// --- remaining placeholder (Task 6: rollingRegime).
+//     Kept exported so regime.test.js loads before that task lands. ---
+
+// Reorg → {regime, confidence}. Identical bands to gpu-tracker wj.js (deliberate parity).
+export function regimeState(reorg) {
+  if (reorg == null) return { regime: 'unknown', confidence: 'unknown' };
+  if (reorg < 0.34) return { regime: 'stable', confidence: 'high' };
+  if (reorg < 0.67) return { regime: 'elevated', confidence: 'med' };
+  return { regime: 'reorganizing', confidence: 'low' };
+}
+
+// Population stdev of the last n returns (numbers). null if <2.
+export function recentVol(rets, n) {
+  const tail = (rets || []).slice(-n);
+  if (tail.length < 2) return null;
+  const mean = tail.reduce((s, x) => s + x, 0) / tail.length;
+  const v = tail.reduce((s, x) => s + (x - mean) ** 2, 0) / tail.length;
+  return Math.sqrt(v);
+}
+
 export function rollingRegime() { throw new Error('not implemented (Task 6)'); }

@@ -58,3 +58,18 @@ test('decouplingPartners: sign-flipped partner ranks first, stable partner exclu
   const mNow = { a: { b: -0.8, c: 0.68 }, b: { a: -0.8 }, c: { a: 0.68 } };
   assert.deepEqual(decouplingPartners(mPrev, mNow, 'a', ['a', 'b', 'c']), ['b']);
 });
+
+test('regimeState: bands + confidence mapping (0.34 / 0.67 edges)', () => {
+  assert.deepEqual(regimeState(0.1), { regime: 'stable', confidence: 'high' });
+  assert.deepEqual(regimeState(0.33), { regime: 'stable', confidence: 'high' });
+  assert.deepEqual(regimeState(0.34), { regime: 'elevated', confidence: 'med' });
+  assert.deepEqual(regimeState(0.5), { regime: 'elevated', confidence: 'med' });
+  assert.deepEqual(regimeState(0.67), { regime: 'reorganizing', confidence: 'low' });
+  assert.deepEqual(regimeState(0.8), { regime: 'reorganizing', confidence: 'low' });
+  assert.deepEqual(regimeState(null), { regime: 'unknown', confidence: 'unknown' });
+});
+
+test('recentVol: stdev of last n returns; <2 → null', () => {
+  assert.ok(Math.abs(recentVol([0.1, -0.1, 0.1, -0.1], 4) - 0.1) < 1e-9);
+  assert.equal(recentVol([0.1], 4), null);
+});
