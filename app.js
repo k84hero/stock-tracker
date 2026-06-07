@@ -761,6 +761,19 @@ function analystCtx() {
         biggestShifts: snap.shifts.slice(0, 8),
       };
     },
+    async toolRegimes() {
+      const out = await computeRegime();
+      if (!out.ok) return { error: `regime unavailable: ${out.reason} (need ≥${REGIME_MIN_HOLDINGS} holdings with overlapping daily history)` };
+      return {
+        asof: out.asof,
+        window: `rolling ${out.window} trading days, step ${out.step}`,
+        hero: out.hero,
+        weightedStress: out.weightedStress,
+        perSymbol: out.perSymbol,
+        trajectoryTail: out.trajectory.slice(-6),
+        meaning: 'hero.reorg = 1 − signed weighted-Jaccard of the holdings correlation architecture between the last two rolling windows; 0 = stable, 1 = fully reorganized. weightedStress = position-value-weighted mean of per-symbol reorg. Leading indicator, not a prediction.',
+      };
+    },
   };
 }
 

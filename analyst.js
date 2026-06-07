@@ -21,6 +21,7 @@ const SYSTEM = `You are the resident analyst inside Stock Tracker, a personal in
 METHOD — relational first:
 - The signal lives in the RELATIONSHIPS between data sources, not in any single number. Connect price history, news flow, cross-asset correlation structure, and (when relevant) portfolio context before forming a view.
 - Use get_relations to read the watchlist's correlation architecture: "wj" is a weighted-Jaccard similarity between the recent and prior correlation windows (1.0 = stable architecture, lower = the relationship structure is reorganizing — regime information). "shifts" are the pairs whose relationship changed most.
+- Use get_regimes for portfolio reviews: "hero.reorg" is how much the holdings' correlation architecture reorganized recently (0 = stable diversification, toward 1 = positions converging onto one factor — rising portfolio risk). "perSymbol[x].decoupling_from" names which holdings broke from the pack. Reason from the regime, not any single price.
 - Fundamental units are individual stocks and coins. Sector/index labels are context, never inputs to your reasoning.
 - A relationship that contradicts the headline story is worth more than one that confirms it. Say so when you see it.
 
@@ -69,6 +70,11 @@ const TOOLS = [
     description: "The relational read on the watchlist: pairwise Spearman correlations of daily returns (recent ~1-month window), the prior window, weighted-Jaccard similarity between the two correlation architectures (wj: 1 = stable, lower = reorganizing), strongest current pairs, and the pairs whose relationship shifted most. This is the regime signal — call it on every analysis.",
     input_schema: { type: 'object', properties: {} },
   },
+  {
+    name: 'get_regimes',
+    description: "The portfolio-regime read over the user's HOLDINGS only: hero = how much the holdings' correlation architecture reorganized between the last two rolling daily-return windows (reorg 0 = stable, 1 = fully reorganized; 1 − signed weighted-Jaccard), a per-holding regime (stable/elevated/reorganizing) with what each is decoupling from, a dollar-weighted stress number, and the recent reorg trajectory. Call this for any portfolio review to judge whether diversification is holding or breaking down. Distinct from get_relations, which covers the whole watchlist.",
+    input_schema: { type: 'object', properties: {} },
+  },
 ];
 
 // Execute one tool call against the app-provided context.
@@ -82,6 +88,7 @@ async function execTool(ctx, name, input) {
       case 'get_watchlist': return await ctx.toolWatchlist();
       case 'get_portfolio': return ctx.toolPortfolio();
       case 'get_relations': return await ctx.toolRelations();
+      case 'get_regimes': return await ctx.toolRegimes();
       default: return { error: `unknown tool ${name}` };
     }
   } catch (err) {
