@@ -29,13 +29,14 @@
   <link rel="modulepreload" href="lib.js">
   <link rel="modulepreload" href="config.js">
   <link rel="modulepreload" href="analyst.js">
+  <link rel="modulepreload" href="regime.js">
 </head>
 <body>
   <a class="visually-hidden" href="#main">Skip to content</a>
   <header>
     <div class="masthead">
       <h1>Stock Tracker</h1>
-      <button id="settings-open" class="ghost" aria-haspopup="dialog">Settings</button>
+      <button type="button" id="settings-open" class="ghost" aria-haspopup="dialog">Settings</button>
     </div>
     <p class="ref">Watchlist quotes · daily charts · private portfolio · relational map · AI analyst. All state stays in this browser.</p>
     <p class="status" id="status" role="status" aria-live="polite">Loading…</p>
@@ -66,7 +67,7 @@
     <section aria-labelledby="relations-h">
       <div class="section-head">
         <h2 id="relations-h">Relational map</h2>
-        <button id="relations-refresh" class="ghost">Refresh</button>
+        <button type="button" id="relations-refresh" class="ghost" aria-label="Refresh relational map">Refresh</button>
       </div>
       <p class="ref">The information is in the edges: pairwise return correlations across the watchlist, and how that architecture is reorganizing month over month.</p>
       <div id="relations-body" class="relations"></div>
@@ -75,7 +76,7 @@
     <section aria-labelledby="regime-h">
       <div class="section-head">
         <h2 id="regime-h">Portfolio regime</h2>
-        <button id="regime-refresh" class="ghost">Refresh</button>
+        <button type="button" id="regime-refresh" class="ghost" aria-label="Refresh portfolio regime">Refresh</button>
       </div>
       <p class="ref">Is your holdings' correlation architecture holding together, or reorganizing onto one factor? A leading indicator from rolling daily-return correlations — not a prediction. Holdings only; the watchlist is excluded.</p>
       <div id="regime-body" class="regime"></div>
@@ -84,7 +85,7 @@
     <section aria-labelledby="portfolio-h">
       <div class="section-head">
         <h2 id="portfolio-h">Portfolio</h2>
-        <button id="portfolio-analyze" hidden>Analyze portfolio (AI)</button>
+        <button type="button" id="portfolio-analyze" hidden>Analyze portfolio (AI)</button>
       </div>
       <form id="position-form" class="position-form" autocomplete="off">
         <div>

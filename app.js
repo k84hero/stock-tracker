@@ -472,11 +472,11 @@ function heldSymbols() {
 async function computeRegime() {
   const held = heldSymbols();
   if (held.length < REGIME_MIN_HOLDINGS) return { ok: false, reason: 'holdings', ids: held, asof: null };
-  for (const symbol of held) {
-    if (!state.series.has(symbol)) {
-      try { await fetchSeries(symbol); } catch { /* skip symbols without data */ }
-    }
-  }
+  // Hydrate any uncached held series concurrently — cache hits resolve at once; the Twelve Data
+  // queue still serializes the real HTTP calls under the rate limit.
+  await Promise.allSettled(
+    held.filter((s) => !state.series.has(s)).map((s) => fetchSeries(s).catch(() => {})),
+  );
   const map = {};
   for (const symbol of held) {
     const s = state.series.get(symbol) ?? (!chartsLive() && !isCrypto(symbol) ? getDemoSeries(symbol) : null);
@@ -535,14 +535,14 @@ function renderRelations() {
     ),
     el('div', { class: 'rel-cols' },
       el('div', {},
-        el('h4', { text: 'Strongest relationships (1M)' }),
+        el('h3', { text: 'Strongest relationships (1M)' }),
         el('ul', { class: 'rel-list' }, ...snap.pairs.slice(0, 5).map((p) => el('li', {},
           el('span', { class: 'rel-pair', text: pairLine(p) }),
           el('span', { class: `num ${deltaClass(p.r)}`, text: p.r.toFixed(2) }),
         ))),
       ),
       el('div', {},
-        el('h4', { text: 'Biggest shifts vs prior month' }),
+        el('h3', { text: 'Biggest shifts vs prior month' }),
         el('ul', { class: 'rel-list' }, ...snap.shifts.slice(0, 5).map((p) => el('li', {},
           el('span', { class: 'rel-pair', text: pairLine(p) }),
           el('span', { class: 'num', text: `${p.prior.toFixed(2)} → ${p.r.toFixed(2)}` }),
@@ -560,7 +560,8 @@ function renderRegime() {
   if (!panel) return;
   computeRegime().then((out) => {
     panel.replaceChildren(regimeView(out));
-  }).catch(() => {
+  }).catch((err) => {
+    console.warn('[regime]', err);
     panel.replaceChildren(el('p', { class: 'ref', text: 'Regime unavailable right now — charts may still be loading. Try Refresh.' }));
   });
 }
@@ -594,7 +595,7 @@ function regimeView(out) {
     ),
     el('p', { class: 'ref', text: 'Hero = how much the correlation architecture among your holdings reorganized between the last two rolling windows (1 − signed weighted-Jaccard). 0 = unchanged, 1 = fully reorganized. Leading indicator, not a prediction.' }),
     el('div', {},
-      el('h4', { text: 'Per-holding regime' }),
+      el('h3', { text: 'Per-holding regime' }),
       el('ul', { class: 'rel-list regime-list' }, ...perItems),
     ),
   );

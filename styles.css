@@ -198,7 +198,8 @@ section { margin-top: 30px; }
 .wj-drifting { color: #ffd98a; }
 .wj-reorganizing { color: var(--down); }
 .rel-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
-.rel-cols h4 { margin: 0 0 8px; font-size: 0.82rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; }
+.rel-cols h3,
+.regime-wrap h3 { margin: 0 0 8px; font-size: 0.82rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; }
 .rel-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .rel-list li {
   display: flex; justify-content: space-between; gap: 10px;
@@ -316,7 +317,7 @@ footer { margin-top: 42px; border-top: 1px solid var(--line); padding-top: 14px;
 /* ---------- portfolio regime ---------- */
 .regime-wrap { display: grid; gap: 14px; }
 .regime-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; justify-content: space-between; }
-.regime-spark { width: 220px; height: 48px; flex: 0 0 auto; }
+.regime-spark { width: 220px; height: 48px; flex: 0 0 auto; max-width: 100%; }
 .regime-list li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .regime-badge {
   font-variant-numeric: tabular-nums; font-size: 0.82rem; padding: 2px 8px; border-radius: 999px;
