@@ -493,6 +493,28 @@ async function computeRegime() {
   });
 }
 
+// Optional private seed: if holdings.seed.json is present AND the user has no positions yet,
+// pre-fill the manual portfolio from it. Manual entry stays the source of truth — a non-empty
+// book is never overwritten. The file is gitignored; its absence is the normal case (silent).
+async function loadHoldingsSeed() {
+  if (state.positions.length) return;
+  try {
+    const res = await fetch('holdings.seed.json', { cache: 'no-store' });
+    if (!res.ok) return;
+    const seed = await res.json();
+    if (!Array.isArray(seed)) return;
+    const clean = seed
+      .filter((p) => p && p.symbol && Number(p.shares) > 0)
+      .map((p) => ({
+        id: `p${posSeq++}`,
+        symbol: String(p.symbol).toUpperCase().slice(0, 12),
+        shares: Number(p.shares),
+        costBasis: Number(p.costBasis) || 0,
+      }));
+    if (clean.length) { state.positions = clean; store.set('positions', state.positions); }
+  } catch { /* no seed / bad JSON → manual portfolio only */ }
+}
+
 function renderRelations() {
   const panel = $('#relations-body');
   const map = buildSeriesMap();
@@ -1135,6 +1157,7 @@ function bindEvents() {
 
 async function boot() {
   const gen = ++state.bootGen; // invalidates any in-flight sweeps from a prior boot
+  await loadHoldingsSeed();
   $('#demo-banner').hidden = quotesLive();
   state.quotes.clear();
   state.series.clear();
