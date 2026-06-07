@@ -11,11 +11,13 @@ import {
   nextDelay, seriesCacheFresh,
   condenseSeries, relationalSnapshot,
 } from './lib.js';
+import { rollingRegime } from './regime.js';
 import {
   DEFAULT_KEYS, DEFAULT_WATCHLIST, MARKET_STRIP,
   QUOTE_REFRESH_MS, NEWS_TTL_MS, FINNHUB_PER_MIN, TWELVEDATA_PER_MIN,
   COINGECKO_PER_MIN, CRYPTO_IDS, ANALYST_MODELS, ANALYST_DEFAULT_MODEL, MODEL_PRICES,
   ANALYST_PROXY_URL,
+  REGIME_WINDOW, REGIME_STEP, REGIME_MIN_OVERLAP, REGIME_MIN_HOLDINGS,
 } from './config.js';
 import { runAnalyst } from './analyst.js';
 
@@ -457,6 +459,38 @@ function buildSeriesMap() {
     if (s && s.length >= 43) map[symbol] = s;
   }
   return map;
+}
+
+// Held symbols (deduped). The aggregate spans HOLDINGS only — watchlist is excluded.
+function heldSymbols() {
+  return [...new Set(state.positions.map((p) => p.symbol))];
+}
+
+// Hydrate each holding's daily series (cache-first), build the series + weight maps, and run the
+// regime layer. Shared by the UI panel and the analyst's get_regimes tool. Returns the
+// rollingRegime payload ({ok:false, reason} when under-powered).
+async function computeRegime() {
+  const held = heldSymbols();
+  if (held.length < REGIME_MIN_HOLDINGS) return { ok: false, reason: 'holdings', ids: held, asof: null };
+  for (const symbol of held) {
+    if (!state.series.has(symbol)) {
+      try { await fetchSeries(symbol); } catch { /* skip symbols without data */ }
+    }
+  }
+  const map = {};
+  for (const symbol of held) {
+    const s = state.series.get(symbol) ?? (!chartsLive() && !isCrypto(symbol) ? getDemoSeries(symbol) : null);
+    if (s && s.length) map[symbol] = s;
+  }
+  const weights = {};
+  for (const pos of state.positions) {
+    const q = state.quotes.get(pos.symbol);
+    if (q && Number.isFinite(q.c)) weights[pos.symbol] = (weights[pos.symbol] || 0) + Number(pos.shares) * q.c;
+  }
+  return rollingRegime(map, held, {
+    window: REGIME_WINDOW, step: REGIME_STEP, minOverlap: REGIME_MIN_OVERLAP,
+    minHoldings: REGIME_MIN_HOLDINGS, weights,
+  });
 }
 
 function renderRelations() {
