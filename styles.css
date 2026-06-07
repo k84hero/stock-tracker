@@ -312,3 +312,23 @@ footer { margin-top: 42px; border-top: 1px solid var(--line); padding-top: 14px;
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
+
+/* ---------- portfolio regime ---------- */
+.regime-wrap { display: grid; gap: 14px; }
+.regime-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; justify-content: space-between; }
+.regime-spark { width: 220px; height: 48px; flex: 0 0 auto; }
+.regime-list li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.regime-badge {
+  font-variant-numeric: tabular-nums; font-size: 0.82rem; padding: 2px 8px; border-radius: 999px;
+  border: 1px solid currentColor; white-space: nowrap;
+}
+/* Regime colors — word + value already carry the signal; color only reinforces (a11y). */
+.regime-stable { color: #2ecc71; }
+.regime-elevated { color: #f5a623; }
+.regime-reorganizing { color: #ff5a5f; }
+.regime-unknown { color: #8aa0b2; }
+.regime-badge.regime-stable { color: #2ecc71; }
+.regime-badge.regime-elevated { color: #f5a623; }
+.regime-badge.regime-reorganizing { color: #ff5a5f; }
+.regime-badge.regime-unknown { color: #8aa0b2; }
+@media (prefers-reduced-motion: reduce) { .regime-spark { transition: none; } }

@@ -531,6 +531,80 @@ function renderRelations() {
   return snap;
 }
 
+// ---------- portfolio regime panel ----------
+
+function renderRegime() {
+  const panel = $('#regime-body');
+  if (!panel) return;
+  computeRegime().then((out) => {
+    panel.replaceChildren(regimeView(out));
+  }).catch(() => {
+    panel.replaceChildren(el('p', { class: 'ref', text: 'Regime unavailable right now — charts may still be loading. Try Refresh.' }));
+  });
+}
+
+function regimeView(out) {
+  if (!out.ok) {
+    const msg = out.reason === 'history'
+      ? 'Building history — not enough overlapping daily bars across your holdings yet. Charts are still loading, or hold the positions a little longer.'
+      : `Add at least ${REGIME_MIN_HOLDINGS} holdings with chart history to read a portfolio regime. Holdings stay in this browser.`;
+    return el('p', { class: 'ref', text: msg });
+  }
+  const h = out.hero;
+  const pct = (v) => (v == null ? '—' : `${Math.round(v * 100)}%`);
+  const perItems = out.ids.map((id) => {
+    const s = out.perSymbol[id];
+    const dec = s.decoupling_from.length ? `decoupling from ${s.decoupling_from.join(', ')}` : 'coupled with the book';
+    return el('li', {},
+      el('span', { class: 'rel-pair', text: id }),
+      el('span', { class: `regime-badge regime-${s.regime}`, text: `${s.regime} · ${pct(s.reorg)}` }),
+      el('span', { class: 'ref', text: dec }),
+    );
+  });
+  return el('div', { class: 'regime-wrap' },
+    el('div', { class: 'regime-hero' },
+      el('div', { class: 'stat' },
+        el('span', { text: 'Holdings architecture' }),
+        el('b', { class: `regime-${h.regime}`, text: `${h.regime.toUpperCase()} · ${pct(h.reorg)} reorganized` }),
+        el('span', { class: 'ref', text: `confidence ${h.confidence} · dollar-weighted stress ${pct(out.weightedStress)} · as of ${out.asof}` }),
+      ),
+      regimeSpark(out.trajectory),
+    ),
+    el('p', { class: 'ref', text: 'Hero = how much the correlation architecture among your holdings reorganized between the last two rolling windows (1 − signed weighted-Jaccard). 0 = unchanged, 1 = fully reorganized. Leading indicator, not a prediction.' }),
+    el('div', {},
+      el('h4', { text: 'Per-holding regime' }),
+      el('ul', { class: 'rel-list regime-list' }, ...perItems),
+    ),
+  );
+}
+
+// Static SVG trajectory of reorg (0..1) over the rolling windows. role=img + aria-label carry the
+// trend for screen readers; no animation, so it is reduced-motion-safe by construction.
+function regimeSpark(trajectory) {
+  const pts = trajectory.filter((p) => p.reorg != null);
+  if (pts.length < 2) return el('span', { class: 'ref', text: 'trajectory builds with more history' });
+  const W = 220, H = 48, pad = 3;
+  const x = (i) => (i / (pts.length - 1)) * W;
+  const y = (v) => scaleY(v, 0, 1, H, pad); // reuse lib.scaleY: 0 → bottom, 1 → top
+  const poly = pts.map((p, i) => `${Math.round(x(i) * 100) / 100},${Math.round(y(p.reorg) * 100) / 100}`).join(' ');
+  const first = pts[0].reorg, last = pts.at(-1).reorg;
+  const trend = last > first + 0.05 ? 'rising' : last < first - 0.05 ? 'easing' : 'flat';
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('class', 'regime-spark');
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', `Reorganization trajectory ${trend}: ${Math.round(first * 100)}% to ${Math.round(last * 100)}% over ${pts.length} windows`);
+  const pl = document.createElementNS(NS, 'polyline');
+  pl.setAttribute('points', poly);
+  pl.setAttribute('fill', 'none');
+  pl.setAttribute('stroke', 'currentColor');
+  pl.setAttribute('stroke-width', '2');
+  pl.setAttribute('stroke-linejoin', 'round');
+  svg.append(pl);
+  return svg;
+}
+
 // ---------- canvas chart ----------
 
 function drawChart(canvas, series, range, symbol = state.detailSymbol ?? '') {
@@ -850,7 +924,7 @@ async function hydrateSparklines(gen = state.bootGen) {
       renderWatchlist();
     } catch { /* sparkline is decoration */ }
   }
-  if (gen === state.bootGen) renderRelations();
+  if (gen === state.bootGen) { renderRelations(); renderRegime(); }
 }
 
 async function hydrateProfiles(gen = state.bootGen) {
@@ -961,6 +1035,7 @@ function bindEvents() {
       store.set('watchlist', state.watchlist);
       renderWatchlist();
       renderRelations();
+      renderRegime();
     }
   });
 
@@ -992,6 +1067,7 @@ function bindEvents() {
     if (!symbol || !(shares > 0) || !(costBasis >= 0)) return;
     state.positions.push({ id: `p${posSeq++}`, symbol, shares, costBasis });
     store.set('positions', state.positions);
+    renderRegime();
     form.reset();
     renderPortfolio();
     refreshQuotes();
@@ -1002,6 +1078,7 @@ function bindEvents() {
     if (!btn) return;
     state.positions = state.positions.filter((p) => p.id !== btn.dataset.removePos);
     store.set('positions', state.positions);
+    renderRegime();
     renderPortfolio();
   });
 
@@ -1010,6 +1087,7 @@ function bindEvents() {
   });
 
   $('#relations-refresh').addEventListener('click', () => renderRelations());
+  $('#regime-refresh').addEventListener('click', () => renderRegime());
 
   const settings = $('#settings');
   wireDialog(settings);
@@ -1066,6 +1144,7 @@ async function boot() {
   renderWatchlist();
   renderPortfolio();
   renderRelations();
+  renderRegime();
   refreshStatusLine();
 
   refreshQuotes(gen);
