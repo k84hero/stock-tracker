@@ -88,9 +88,6 @@ export function decouplingPartners(mPrev, mNow, id, ids) {
   }
   return scored.filter((s) => s.score > 0.15).sort((p, q) => q.score - p.score).map((s) => s.j);
 }
-// --- remaining placeholder (Task 6: rollingRegime).
-//     Kept exported so regime.test.js loads before that task lands. ---
-
 // Reorg → {regime, confidence}. Identical bands to gpu-tracker wj.js (deliberate parity).
 export function regimeState(reorg) {
   if (reorg == null) return { regime: 'unknown', confidence: 'unknown' };
@@ -108,4 +105,81 @@ export function recentVol(rets, n) {
   return Math.sqrt(v);
 }
 
-export function rollingRegime() { throw new Error('not implemented (Task 6)'); }
+// Align the held subset to common dates and convert to daily returns. { retDates, ret:{id:number[]} }.
+function alignReturns(seriesMap, ids) {
+  const sub = {};
+  for (const id of ids) if (Array.isArray(seriesMap[id]) && seriesMap[id].length) sub[id] = seriesMap[id];
+  const { dates, closesBySym } = alignSeries(sub);
+  const ret = {};
+  for (const id of Object.keys(closesBySym)) ret[id] = toReturns(closesBySym[id]);
+  return { retDates: dates.slice(1), ret }; // returns align to dates[1..]
+}
+
+// The orchestrator. seriesMap: { sym: [{t, c, ...}] }. holdingIds: symbols to span (HELD only).
+// weights: { sym: marketValue } for the dollar-weighted stress (B). Options carry the config knobs.
+// Returns { ok:false, reason } when under-powered, else the full regime payload.
+export function rollingRegime(seriesMap, holdingIds, {
+  window = 21, step = 5, minOverlap = 15, minHoldings = 3, weights = {},
+} = {}) {
+  const { retDates, ret } = alignReturns(seriesMap, holdingIds);
+  const ids = holdingIds.filter((id) => Array.isArray(ret[id]) && ret[id].length >= window);
+  const asof = retDates.at(-1) ?? null;
+  if (ids.length < minHoldings) return { ok: false, reason: 'holdings', ids, asof };
+  if (window < minOverlap) return { ok: false, reason: 'window', ids, asof };
+
+  const L = retDates.length;
+  const windows = [];
+  for (let s = 0; s + window <= L; s += step) {
+    windows.push({ asof: retDates[s + window - 1], M: corrMatrix(ret, ids, s, window) });
+  }
+  if (windows.length < 2) return { ok: false, reason: 'history', ids, asof };
+
+  const trajectory = [];
+  for (let k = 1; k < windows.length; k++) {
+    const u = weightedJaccard(windows[k - 1].M, windows[k].M, ids, { signed: false });
+    const sg = weightedJaccard(windows[k - 1].M, windows[k].M, ids, { signed: true });
+    trajectory.push({
+      date: windows[k].asof,
+      reorg: sg == null ? null : round3(1 - sg),
+      wj_signed: round3(sg),
+      wj_unsigned: round3(u),
+      gap: u != null && sg != null ? round3(u - sg) : null,
+    });
+  }
+
+  const prev = windows.at(-2).M, now = windows.at(-1).M;
+  const perSymbol = {};
+  for (const id of ids) {
+    const rwS = rowWj(prev, now, id, ids, { signed: true });
+    const rwU = rowWj(prev, now, id, ids, { signed: false });
+    const reorg = rwS == null ? null : 1 - rwS;
+    perSymbol[id] = {
+      ...regimeState(reorg),
+      reorg: round3(reorg),
+      sign_coherence: round3(signCoherence(prev, now, id, ids)),
+      gap: rwU != null && rwS != null ? round3(rwU - rwS) : null,
+      decoupling_from: decouplingPartners(prev, now, id, ids),
+      vol: round3(recentVol(ret[id], window)),
+    };
+  }
+
+  // A — hero: 1 − signed global WJ of the latest window pair (holdings architecture reorg).
+  const heroSigned = weightedJaccard(prev, now, ids, { signed: true });
+  const heroReorg = heroSigned == null ? null : 1 - heroSigned;
+  const hero = { ...regimeState(heroReorg), reorg: round3(heroReorg) };
+
+  // B — dollar-weighted per-symbol stress (position market value × per-symbol reorg).
+  let wnum = 0, wden = 0;
+  for (const id of ids) {
+    const w = Number(weights[id]) || 0;
+    const r = perSymbol[id].reorg;
+    if (w > 0 && r != null) { wnum += w * r; wden += w; }
+  }
+  const weightedStress = wden > 0 ? round3(wnum / wden) : null;
+
+  return {
+    ok: true, asof: windows.at(-1).asof, ids, window, step, nWindows: windows.length,
+    hero, weightedStress, trajectory, perSymbol,
+    matrixLatest: { asof: windows.at(-1).asof, ids, r: ids.map((i) => ids.map((j) => round3(now[i]?.[j]))) },
+  };
+}

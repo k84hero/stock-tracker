@@ -73,3 +73,47 @@ test('recentVol: stdev of last n returns; <2 → null', () => {
   assert.ok(Math.abs(recentVol([0.1, -0.1, 0.1, -0.1], 4) - 0.1) < 1e-9);
   assert.equal(recentVol([0.1], 4), null);
 });
+
+// Build a synthetic OHLC-ish series: [{t, c}] is all rollingRegime needs (it reads close `c`).
+const mkSeries = (closes, startDay = 1) =>
+  closes.map((c, i) => ({ t: `2026-01-${String(startDay + i).padStart(2, '0')}`, c }));
+
+test('rollingRegime: <3 holdings → not-ok, reason holdings', () => {
+  const out = rollingRegime({ A: mkSeries([1, 2, 3]), B: mkSeries([1, 2, 3]) }, ['A', 'B'], { minHoldings: 3 });
+  assert.equal(out.ok, false);
+  assert.equal(out.reason, 'holdings');
+});
+
+test('rollingRegime: too little history → not-ok, reason history', () => {
+  const s = mkSeries([10, 11, 12, 13, 14]); // 4 returns = exactly window → only 1 window, <2 needed
+  const out = rollingRegime({ A: s, B: s, C: s }, ['A', 'B', 'C'], { window: 4, step: 1, minOverlap: 3, minHoldings: 3 });
+  assert.equal(out.ok, false);
+  assert.equal(out.reason, 'history');
+});
+
+test('rollingRegime: detects reorganization when A inverts vs B,C in the last window', () => {
+  // 11 closes → 10 returns. window 4, step 2 → windows at returns [0..4),[2..6),[4..8),[6..10): 4 windows.
+  const up = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];          // steady up: all-positive returns
+  const aClose = [10, 11, 12, 13, 14, 15, 16, 15, 17, 16, 18];      // last stretch whips → inverts vs B,C
+  const seriesMap = { A: mkSeries(aClose), B: mkSeries(up), C: mkSeries(up) };
+  const weights = { A: 100, B: 100, C: 100 };
+  const out = rollingRegime(seriesMap, ['A', 'B', 'C'], { window: 4, step: 2, minOverlap: 4, minHoldings: 3, weights });
+
+  assert.equal(out.ok, true);
+  assert.ok(out.trajectory.length >= 1);
+  assert.ok(out.hero.reorg >= 0 && out.hero.reorg <= 1);
+  assert.ok(['stable', 'elevated', 'reorganizing'].includes(out.hero.regime));
+  assert.ok(out.perSymbol.A.reorg >= out.perSymbol.B.reorg);
+  assert.ok(Array.isArray(out.perSymbol.A.decoupling_from));
+  assert.equal(out.weightedStress != null, true);
+  assert.equal(out.ids.length, 3);
+  assert.equal(out.matrixLatest.ids.length, 3);
+});
+
+test('rollingRegime: weightedStress is null when no weights given', () => {
+  const up = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+  const out = rollingRegime({ A: mkSeries(up), B: mkSeries(up), C: mkSeries(up) },
+    ['A', 'B', 'C'], { window: 4, step: 2, minOverlap: 4, minHoldings: 3 });
+  assert.equal(out.ok, true);
+  assert.equal(out.weightedStress, null);
+});
