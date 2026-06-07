@@ -216,7 +216,7 @@ export function alignSeries(seriesMap) {
   return { dates, closesBySym };
 }
 
-function toReturns(closes) {
+export function toReturns(closes) {
   const out = [];
   for (let i = 1; i < closes.length; i++) {
     out.push(closes[i - 1] > 0 ? (closes[i] - closes[i - 1]) / closes[i - 1] : 0);
