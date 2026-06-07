@@ -12,12 +12,14 @@ const round3 = (n) => (n == null ? null : Math.round(n * 1000) / 1000);
 const round2 = (n) => Math.round(n * 100) / 100;
 function isConstant(a) { for (let i = 1; i < a.length; i++) if (a[i] !== a[0]) return false; return true; }
 
-// Pairwise Spearman matrix (nested object, id-keyed) over the window slice [s, s+window) of
-// aligned returns. retBySym: { id: number[] } all same length. A pair is null if either slice is
-// constant (degenerate — avoids a fake sign on a zero-variance series). Diagonal = 1.
-export function corrMatrix(retBySym, ids, s, window) {
+// Pairwise Spearman matrix (nested object, id-keyed) over the length-`winLen` slice [s, s+winLen)
+// of aligned returns. retBySym: { id: number[] } all same length. A pair is null if either slice
+// is constant (degenerate — avoids a fake sign on a zero-variance series). Diagonal = 1.
+// Precondition: every id in `ids` exists in `retBySym` with at least `s + winLen` returns
+// (the caller, rollingRegime, filters ids to satisfy this).
+export function corrMatrix(retBySym, ids, s, winLen) {
   const slice = {};
-  for (const id of ids) slice[id] = retBySym[id].slice(s, s + window);
+  for (const id of ids) slice[id] = retBySym[id].slice(s, s + winLen);
   const M = {};
   for (const i of ids) {
     M[i] = {};

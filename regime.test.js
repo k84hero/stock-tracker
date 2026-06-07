@@ -25,6 +25,12 @@ test('corrMatrix: a constant slice yields null pairs (not a fake 0)', () => {
   assert.equal(M.b.a, null);
 });
 
+test('corrMatrix: matrix is symmetric (M.b.c === M.c.b)', () => {
+  const M = corrMatrix(ret3, ['a', 'b', 'c'], 0, 6);
+  assert.equal(M.b.c, M.c.b);
+  assert.equal(M.a.c, M.c.a);
+});
+
 const ids = ['a', 'b', 'c'];
 const m1 = { a: { a: 1, b: 0.8, c: 0.8 }, b: { a: 0.8, b: 1, c: 0.8 }, c: { a: 0.8, b: 0.8, c: 1 } };
 const m2 = { a: { a: 1, b: -0.8, c: -0.8 }, b: { a: -0.8, b: 1, c: -0.8 }, c: { a: -0.8, b: -0.8, c: 1 } };
