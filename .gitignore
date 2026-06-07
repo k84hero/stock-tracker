@@ -19,3 +19,6 @@ Thumbs.db
 CLAUDE.md
 .claude/
 docs/superpowers/
+
+# Private portfolio seed (MCP-written; positions must never enter the repo)
+holdings.seed.json

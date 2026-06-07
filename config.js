@@ -51,3 +51,10 @@ export const MODEL_PRICES = {
   'claude-sonnet-4-6': { input: 3, output: 15 },
   'claude-haiku-4-5': { input: 1, output: 5 },
 };
+
+// ---------- portfolio regime monitor ----------
+// Rolling daily-return correlation windows over the HOLDINGS-only universe.
+export const REGIME_WINDOW = 21;        // trading days per correlation window (~1 month)
+export const REGIME_STEP = 5;           // stride between rolling windows (~1 week)
+export const REGIME_MIN_OVERLAP = 15;   // a window shorter than this is not trusted (~70% of window)
+export const REGIME_MIN_HOLDINGS = 3;   // fewer held symbols → no aggregate gauge
