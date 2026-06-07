@@ -79,7 +79,8 @@ const mkSeries = (closes, startDay = 1) =>
   closes.map((c, i) => ({ t: `2026-01-${String(startDay + i).padStart(2, '0')}`, c }));
 
 test('rollingRegime: <3 holdings → not-ok, reason holdings', () => {
-  const out = rollingRegime({ A: mkSeries([1, 2, 3]), B: mkSeries([1, 2, 3]) }, ['A', 'B'], { minHoldings: 3 });
+  const s = mkSeries([1, 2, 3, 4, 5]); // 5 closes → survives window+1 and the returns filter
+  const out = rollingRegime({ A: s, B: s }, ['A', 'B'], { window: 2, step: 1, minOverlap: 2, minHoldings: 3 });
   assert.equal(out.ok, false);
   assert.equal(out.reason, 'holdings');
 });
@@ -103,7 +104,8 @@ test('rollingRegime: detects reorganization when A inverts vs B,C in the last wi
   assert.ok(out.trajectory.length >= 1);
   assert.ok(out.hero.reorg >= 0 && out.hero.reorg <= 1);
   assert.ok(['stable', 'elevated', 'reorganizing'].includes(out.hero.regime));
-  assert.ok(out.perSymbol.A.reorg >= out.perSymbol.B.reorg);
+  assert.ok(out.perSymbol.A.reorg > 0, 'A whipped, so its reorg must be positive');
+  assert.ok(out.perSymbol.A.reorg > out.perSymbol.B.reorg, 'A reorganized more than steady-up B');
   assert.ok(Array.isArray(out.perSymbol.A.decoupling_from));
   assert.equal(out.weightedStress != null, true);
   assert.equal(out.ids.length, 3);
@@ -116,4 +118,17 @@ test('rollingRegime: weightedStress is null when no weights given', () => {
     ['A', 'B', 'C'], { window: 4, step: 2, minOverlap: 4, minHoldings: 3 });
   assert.equal(out.ok, true);
   assert.equal(out.weightedStress, null);
+});
+
+test('rollingRegime: a thin-history holding is excluded, the rest still compute', () => {
+  const up = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]; // 11 closes → 10 returns
+  const thin = [10, 11, 12, 13];                            // 4 closes → only 3 returns (< window+1)
+  const out = rollingRegime(
+    { A: mkSeries(up), B: mkSeries(up), C: mkSeries(up), D: mkSeries(thin) },
+    ['A', 'B', 'C', 'D'],
+    { window: 4, step: 2, minOverlap: 4, minHoldings: 3 },
+  );
+  assert.equal(out.ok, true);
+  assert.deepEqual(out.ids.sort(), ['A', 'B', 'C']); // D excluded for thin history
+  assert.equal(out.perSymbol.D, undefined);
 });

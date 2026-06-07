@@ -121,11 +121,17 @@ function alignReturns(seriesMap, ids) {
 export function rollingRegime(seriesMap, holdingIds, {
   window = 21, step = 5, minOverlap = 15, minHoldings = 3, weights = {},
 } = {}) {
-  const { retDates, ret } = alignReturns(seriesMap, holdingIds);
-  const ids = holdingIds.filter((id) => Array.isArray(ret[id]) && ret[id].length >= window);
+  // Config invariant: a window shorter than the trust threshold is a misconfiguration, not a
+  // data condition — reject it before touching data.
+  if (window < minOverlap) return { ok: false, reason: 'window', ids: [], asof: null };
+
+  // A holding needs enough RAW bars to possibly span a window; otherwise the date-intersection
+  // collapses and blanks the whole book. Exclude thin-history holdings up front, then align the rest.
+  const eligible = holdingIds.filter((id) => Array.isArray(seriesMap[id]) && seriesMap[id].length >= window + 1);
+  const { retDates, ret } = alignReturns(seriesMap, eligible);
+  const ids = eligible.filter((id) => Array.isArray(ret[id]) && ret[id].length >= window);
   const asof = retDates.at(-1) ?? null;
   if (ids.length < minHoldings) return { ok: false, reason: 'holdings', ids, asof };
-  if (window < minOverlap) return { ok: false, reason: 'window', ids, asof };
 
   const L = retDates.length;
   const windows = [];
