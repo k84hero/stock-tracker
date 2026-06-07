@@ -47,8 +47,7 @@ export function weightedJaccard(m1, m2, ids, { signed = false } = {}) {
   return den === 0 ? null : num / den;
 }
 
-// --- placeholders replaced in later tasks (Task 4: rowWj/signCoherence/decouplingPartners;
-// Task 5: regimeState/recentVol; Task 6: rollingRegime). Kept so regime.test.js can load. ---
+// ---------- per-symbol decomposition ----------
 // WJ similarity restricted to ONE symbol's correlation row (its partners). Per-unit decomposition.
 export function rowWj(m1, m2, id, ids, { signed = false } = {}) {
   let num = 0, den = 0;
@@ -89,6 +88,8 @@ export function decouplingPartners(mPrev, mNow, id, ids) {
   }
   return scored.filter((s) => s.score > 0.15).sort((p, q) => q.score - p.score).map((s) => s.j);
 }
+// --- remaining placeholders (replaced in Task 5: regimeState/recentVol; Task 6: rollingRegime).
+//     Kept exported so regime.test.js loads before those tasks land. ---
 export function regimeState() { throw new Error('not implemented (Task 5)'); }
 export function recentVol() { throw new Error('not implemented (Task 5)'); }
 export function rollingRegime() { throw new Error('not implemented (Task 6)'); }
