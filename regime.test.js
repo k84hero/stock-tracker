@@ -45,3 +45,16 @@ test('weightedJaccard: no shared pairs → null', () => {
   const na = { a: { b: null }, b: { a: null } };
   assert.equal(weightedJaccard(na, na, ['a', 'b'], { signed: true }), null);
 });
+
+test('rowWj isolates one symbol; signCoherence counts sign-preserving partners', () => {
+  assert.equal(rowWj(m1, m2, 'a', ids, { signed: true }), 0);
+  assert.equal(rowWj(m1, m1, 'a', ids, { signed: true }), 1);
+  assert.equal(signCoherence(m1, m2, 'a', ids), 0);
+  assert.equal(signCoherence(m1, m1, 'a', ids), 1);
+});
+
+test('decouplingPartners: sign-flipped partner ranks first, stable partner excluded', () => {
+  const mPrev = { a: { b: 0.8, c: 0.7 }, b: { a: 0.8 }, c: { a: 0.7 } };
+  const mNow = { a: { b: -0.8, c: 0.68 }, b: { a: -0.8 }, c: { a: 0.68 } };
+  assert.deepEqual(decouplingPartners(mPrev, mNow, 'a', ['a', 'b', 'c']), ['b']);
+});

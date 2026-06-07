@@ -49,9 +49,46 @@ export function weightedJaccard(m1, m2, ids, { signed = false } = {}) {
 
 // --- placeholders replaced in later tasks (Task 4: rowWj/signCoherence/decouplingPartners;
 // Task 5: regimeState/recentVol; Task 6: rollingRegime). Kept so regime.test.js can load. ---
-export function rowWj() { throw new Error('not implemented (Task 4)'); }
-export function signCoherence() { throw new Error('not implemented (Task 4)'); }
-export function decouplingPartners() { throw new Error('not implemented (Task 4)'); }
+// WJ similarity restricted to ONE symbol's correlation row (its partners). Per-unit decomposition.
+export function rowWj(m1, m2, id, ids, { signed = false } = {}) {
+  let num = 0, den = 0;
+  for (const j of ids) {
+    if (j === id) continue;
+    const a = m1[id]?.[j], b = m2[id]?.[j];
+    if (a == null || b == null) continue;
+    den += Math.max(Math.abs(a), Math.abs(b));
+    num += signed && Math.sign(a) !== Math.sign(b) ? 0 : Math.min(Math.abs(a), Math.abs(b));
+  }
+  return den === 0 ? null : num / den;
+}
+
+// Fraction of a symbol's partners that preserved correlation sign between windows. null if none shared.
+export function signCoherence(m1, m2, id, ids) {
+  let same = 0, total = 0;
+  for (const j of ids) {
+    if (j === id) continue;
+    const a = m1[id]?.[j], b = m2[id]?.[j];
+    if (a == null || b == null) continue;
+    total++;
+    if (Math.sign(a) === Math.sign(b)) same++;
+  }
+  return total === 0 ? null : same / total;
+}
+
+// A symbol's partners ranked by how much they decoupled (sign flip dominates, then |r| drop).
+// Returns partner ids above a small threshold, most-decoupled first.
+export function decouplingPartners(mPrev, mNow, id, ids) {
+  const scored = [];
+  for (const j of ids) {
+    if (j === id) continue;
+    const a = mPrev[id]?.[j], b = mNow[id]?.[j];
+    if (a == null || b == null) continue;
+    const flip = Math.sign(a) !== Math.sign(b) ? 1 : 0;
+    const drop = Math.abs(a) - Math.abs(b); // positive = coupling weakened
+    scored.push({ j, score: flip * 2 + Math.max(0, drop) });
+  }
+  return scored.filter((s) => s.score > 0.15).sort((p, q) => q.score - p.score).map((s) => s.j);
+}
 export function regimeState() { throw new Error('not implemented (Task 5)'); }
 export function recentVol() { throw new Error('not implemented (Task 5)'); }
 export function rollingRegime() { throw new Error('not implemented (Task 6)'); }
